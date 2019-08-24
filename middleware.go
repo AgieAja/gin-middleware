@@ -1,13 +1,22 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
 
 	b64 "encoding/base64"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+)
+
+var (
+	jwtSigningMethod = jwt.SigningMethodHS256
+	jwtSignatureKey  = []byte(os.Getenv("APP_SECRET_KEY_JWT"))
 )
 
 //BasicAuth - authentication with basic auth
@@ -38,6 +47,55 @@ func BasicAuth(c *gin.Context) {
 			"href":    c.Request.RequestURI,
 		}
 		c.JSON(http.StatusUnauthorized, result)
+		c.Abort()
+		return
+	}
+}
+
+//JWTAuth - auth token jwt
+func JWTAuth(c *gin.Context) {
+	authHeader := c.Request.Header.Get("Authorization")
+	if !strings.Contains(authHeader, "Bearer") {
+		result := gin.H{
+			"status":  http.StatusForbidden,
+			"message": "invalid token",
+			"href":    c.Request.RequestURI,
+		}
+		c.JSON(http.StatusForbidden, result)
+		c.Abort()
+		return
+	}
+
+	tokenString := strings.Replace(authHeader, "Bearer ", "", -1)
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if method, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Signing method invalid")
+		} else if method != jwtSigningMethod {
+			return nil, fmt.Errorf("Signing method invalid")
+		}
+
+		return jwtSignatureKey, nil
+	})
+
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	if err != nil {
+		log.Error().Msg(err.Error())
+		result := gin.H{
+			"status":  http.StatusUnauthorized,
+			"message": err.Error(),
+		}
+		c.JSON(http.StatusUnauthorized, result)
+		c.Abort()
+		return
+	}
+
+	_, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		result := gin.H{
+			"status":  http.StatusInternalServerError,
+			"message": "Error check payload token",
+		}
+		c.JSON(http.StatusInternalServerError, result)
 		c.Abort()
 		return
 	}
