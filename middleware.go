@@ -110,8 +110,8 @@ func JwtAuthWithHeader(c *gin.Context) {
 		c.JSON(
 			http.StatusBadRequest,
 			gin.H{
-				"status":  http.StatusBadRequest,
-				"message": "Header cant empty",
+				"status":   http.StatusBadRequest,
+				"messages": "Header cant empty",
 			},
 		)
 		c.Abort()
@@ -122,9 +122,9 @@ func JwtAuthWithHeader(c *gin.Context) {
 
 	if !strings.Contains(authHeader, "Bearer") {
 		result := gin.H{
-			"status":  http.StatusForbidden,
-			"message": "invalid token",
-			"href":    c.Request.RequestURI,
+			"status":   http.StatusForbidden,
+			"messages": "invalid token",
+			"href":     c.Request.RequestURI,
 		}
 		c.JSON(http.StatusForbidden, result)
 		c.Abort()
@@ -147,8 +147,8 @@ func JwtAuthWithHeader(c *gin.Context) {
 	if err != nil {
 		log.Error().Msg(err.Error())
 		result := gin.H{
-			"status":  http.StatusUnauthorized,
-			"message": err.Error(),
+			"status":   http.StatusUnauthorized,
+			"messages": err.Error(),
 		}
 		c.JSON(http.StatusUnauthorized, result)
 		c.Abort()
@@ -160,8 +160,8 @@ func JwtAuthWithHeader(c *gin.Context) {
 		myID := claims["user_id"].(float64)
 		if userID != int(myID) {
 			result := gin.H{
-				"status":  http.StatusUnauthorized,
-				"message": "Unauthorize user",
+				"status":   http.StatusUnauthorized,
+				"messages": "Unauthorize user",
 			}
 			c.JSON(http.StatusUnauthorized, result)
 			c.Abort()
