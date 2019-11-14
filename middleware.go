@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	b64 "encoding/base64"
@@ -98,5 +99,73 @@ func JWTAuth(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, result)
 		c.Abort()
 		return
+	}
+}
+
+//JwtAuthWithHeader - auth token jwt with header
+func JwtAuthWithHeader(c *gin.Context) {
+	authHeader := c.Request.Header.Get("Authorization")
+	myUserID := c.Request.Header.Get("user_id")
+	if myUserID == "" {
+		c.JSON(
+			http.StatusBadRequest,
+			gin.H{
+				"status":  http.StatusBadRequest,
+				"message": "Header cant empty",
+			},
+		)
+		c.Abort()
+		return
+	}
+
+	userID, _ := strconv.Atoi(myUserID)
+
+	if !strings.Contains(authHeader, "Bearer") {
+		result := gin.H{
+			"status":  http.StatusForbidden,
+			"message": "invalid token",
+			"href":    c.Request.RequestURI,
+		}
+		c.JSON(http.StatusForbidden, result)
+		c.Abort()
+		return
+	}
+
+	tokenString := strings.Replace(authHeader, "Bearer ", "", -1)
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if method, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Signing method invalid")
+		} else if method != jwtSigningMethod {
+			return nil, fmt.Errorf("Signing method invalid")
+		}
+
+		return jwtSignatureKey, nil
+	})
+
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	if err != nil {
+		log.Error().Msg(err.Error())
+		result := gin.H{
+			"status":  http.StatusUnauthorized,
+			"message": err.Error(),
+		}
+		c.JSON(http.StatusUnauthorized, result)
+		c.Abort()
+		return
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if ok {
+		myID := claims["user_id"].(float64)
+		if userID != int(myID) {
+			result := gin.H{
+				"status":  http.StatusUnauthorized,
+				"message": "Unauthorize user",
+			}
+			c.JSON(http.StatusUnauthorized, result)
+			c.Abort()
+			return
+		}
 	}
 }
