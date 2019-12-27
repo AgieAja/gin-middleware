@@ -105,7 +105,7 @@ func JWTAuth(c *gin.Context) {
 //JwtAuthWithHeader - auth token jwt with header
 func JwtAuthWithHeader(c *gin.Context) {
 	authHeader := c.Request.Header.Get("Authorization")
-	myUserID := c.Request.Header.Get("user_id")
+	myUserID := c.Request.Header.Get("userid")
 	if myUserID == "" {
 		c.JSON(
 			http.StatusBadRequest,
